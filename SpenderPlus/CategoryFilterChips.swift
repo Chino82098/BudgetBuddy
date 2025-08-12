@@ -54,10 +54,12 @@ private struct FilterChip: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(.primary) // neutral text
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
-                .background(.ultraThinMaterial) // translucent fill to match flyout
+                .contentShape(Capsule())
+                .background(.ultraThinMaterial)
                 .overlay(
                     Capsule()
                         .stroke(brand.opacity(isSelected ? 1.0 : 0.9), lineWidth: isSelected ? 1.8 : 1.3)
@@ -65,5 +67,8 @@ private struct FilterChip: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
+        .accessibilityLabel(Text(title))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

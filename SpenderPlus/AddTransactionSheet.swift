@@ -70,15 +70,25 @@ struct AddTransactionSheet: View {
 
                 Section("Amount") {
                     TextField("e.g. -54.23 for expense, 200 for income", text: $amountText)
+                        .textFieldStyle(.plain)
                         .keyboardType(.decimalPad)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .submitLabel(.next)
                         .focused($focusedField, equals: .amount)
+                        .onSubmit { focusedField = .note }
+                        .modifier(GlassFieldBackground())
                 }
 
                 Section("Note") {
                     TextField("Optional note", text: $note)
+                        .textFieldStyle(.plain)
+                        .textInputAutocapitalization(.sentences)
+                        .autocorrectionDisabled(false)
                         .focused($focusedField, equals: .note)
                         .submitLabel(.done)
                         .onSubmit { dismissFocus() }
+                        .modifier(GlassFieldBackground())
                 }
 
                 // Recurring
@@ -128,11 +138,17 @@ struct AddTransactionSheet: View {
                     }
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("New Transaction")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }
             }
+            .toolbarBackground(.clear, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .animation(.easeInOut(duration: 0.2), value: isRecurring)
+            .scrollContentBackground(.hidden)
+            .bbGlassRectBackground()
         }
         .onAppear {
             // Ensure we have a valid, selectable category
@@ -304,5 +320,42 @@ struct AddTransactionSheet: View {
         case .yearly:   freq = .yearly;  interval = 1
         case .custom:   break // leave as-is; user edits below
         }
+    }
+}
+
+// MARK: - Modern glass background for inputs (iOS 26 look)
+private struct GlassFieldBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                Color.clear
+                    .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 14, style: .continuous))
+                    // Subtle "liquid glass" sheen (kept from previous design)
+                    .overlay(
+                        AngularGradient(
+                            gradient: Gradient(colors: [
+                                .white.opacity(0.40),
+                                .white.opacity(0.12),
+                                .white.opacity(0.04),
+                                .white.opacity(0.28),
+                                .white.opacity(0.40)
+                            ]),
+                            center: .center
+                        )
+                        .blendMode(.plusLighter)
+                        .opacity(0.22)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    )
+                    // Soft inner highlight ring
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(.white.opacity(0.38), lineWidth: 0.75)
+                            .blendMode(.plusLighter)
+                    )
+            )
+            // Gentle drop shadow to lift off the form
+            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 6)
     }
 }

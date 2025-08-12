@@ -50,5 +50,6 @@ struct TransactionRow: View {
             }
         }
         .padding(.vertical, 4)
+        .background(Color.white)
     }
 }

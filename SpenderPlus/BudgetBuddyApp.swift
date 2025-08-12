@@ -2,12 +2,10 @@ import SwiftUI
 import SwiftData
 
 @main
-struct SpenderPlusApp: App {
+struct BudgetBuddyApp: App {
     var body: some Scene {
         WindowGroup {
-            StandardScreen {
-                ContentView()
-            }
+            ContentView()
         }
         .modelContainer(for: [
             Category.self,

@@ -44,6 +44,50 @@ struct EditTransactionSheet: View {
     private enum Field: Hashable { case amount, note }
     @FocusState private var focusedField: Field?
 
+    // Number helpers & sign rule
+    private func numberString(_ value: Double) -> String {
+        let nf = NumberFormatter()
+        nf.numberStyle = .decimal
+        nf.maximumFractionDigits = 2
+        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
+        return nf.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private func parseNumber(_ text: String) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Basic normalization; if you want full locale handling later, switch to NumberFormatter with locale.
+        let normalized = trimmed.replacingOccurrences(of: ",", with: ".")
+        return Double(normalized)
+    }
+
+    /// If category is "Income" → show positive. Else → show negative (unless zero/empty).
+    private func applySignRule(for category: Category?) {
+        guard let name = category?.name else { return }
+        let isIncome = (name == "Income")
+        var t = amountText.trimmingCharacters(in: .whitespaces)
+
+        // Strip leading plus to normalize input
+        if t.hasPrefix("+") { t.removeFirst() }
+
+        if t.isEmpty || t == "-" {
+            amountText = isIncome ? "" : "-"
+            return
+        }
+
+        let raw = t.hasPrefix("-") ? String(t.dropFirst()) : t
+        let val = parseNumber(raw) ?? 0
+
+        if isIncome {
+            amountText = String(raw)
+        } else {
+            if val == 0 {
+                amountText = "0"
+            } else {
+                amountText = t.hasPrefix("-") ? t : "-" + raw
+            }
+        }
+    }
+
     // Add this helper:
     private func dismissFocus() {
         focusedField = nil
@@ -68,6 +112,9 @@ struct EditTransactionSheet: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    .onChange(of: txn.category) { _, new in
+                        applySignRule(for: new)
+                    }
                 }
 
                 // Amount
@@ -148,15 +195,13 @@ struct EditTransactionSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }
             }
+            .toolbarBackground(.clear, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .scrollContentBackground(.hidden)
+            .bbGlassRectBackground()
             .onAppear {
                 // Amount text
-                amountText = {
-                    let nf = NumberFormatter()
-                    nf.numberStyle = .decimal
-                    nf.maximumFractionDigits = 2
-                    nf.minimumFractionDigits = txn.amount == floor(txn.amount) ? 0 : 2
-                    return nf.string(from: NSNumber(value: txn.amount)) ?? String(txn.amount)
-                }()
+                amountText = numberString(txn.amount)
 
                 // Prefill recurrence UI from txn
                 if txn.isRecurring {
@@ -169,6 +214,8 @@ struct EditTransactionSheet: View {
                     }
                     preset = presetFrom(freq: freq, interval: interval)
                 }
+
+                applySignRule(for: txn.category)
 
                 // Focus amount on open
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -207,7 +254,7 @@ struct EditTransactionSheet: View {
         }()
 
         // Apply edited values to the current txn
-        if let parsed = Double(amountText.replacingOccurrences(of: ",", with: ".")) {
+        if let parsed = parseNumber(amountText) {
             txn.amount = parsed
         }
         txn.recurFrequency = newFreq

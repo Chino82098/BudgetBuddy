@@ -6,7 +6,8 @@ struct BudgetSummaryCard: View {
 
     private var pct: Double {
         guard budget > 0 else { return 0 }
-        return min(max(spent / max(budget, 1), 0), 1)
+        let raw = spent / max(budget, 0.01)
+        return min(max(raw, 0), 1)
     }
     private var remaining: Double { budget - spent }
 
@@ -49,7 +50,12 @@ struct BudgetSummaryCard: View {
 
             // Progress bar
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.15)).frame(height: 12)
+                // Track
+                Capsule()
+                    .fill(Color.secondary.opacity(0.16))
+                    .frame(height: 12)
+
+                // Fill
                 GeometryReader { geo in
                     Capsule()
                         .fill(barColor)
@@ -58,6 +64,9 @@ struct BudgetSummaryCard: View {
                 }
                 .frame(height: 12)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Budget used")
+            .accessibilityValue(pctText)
 
             // Bottom row: Spent (left) — Remaining (right)
             HStack(alignment: .firstTextBaseline) {
@@ -67,20 +76,27 @@ struct BudgetSummaryCard: View {
             }
             .font(.footnote)
         }
+        // iOS 26 glass; fallback to material if not available
         .padding(14)
-        .background(.ultraThinMaterial)
+        .bbGlassRoundedCard(14)
+        // subtle highlight ring
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.35), lineWidth: 0.75)
+                .blendMode(.plusLighter)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
+        // light shadow
+        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+        .minimumScaleFactor(0.95)
+    } // ← closes `var body`
 
     // MARK: - Helpers
 
     private var pctText: String {
         guard budget > 0 else { return "—" }
-        return "\(Int((spent / max(budget, 1)) * 100))%"
+        let raw = spent / max(budget, 0.01)
+        let shown = max(0, raw * 100)
+        return "\(Int(shown))%"
     }
 
     private var budgetText: String {

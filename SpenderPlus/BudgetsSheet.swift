@@ -1,6 +1,15 @@
 import SwiftUI
 import SwiftData
 
+// Lightweight wrapper to keep the type-checker fast when using Liquid Glass
+private struct GlassCard: View {
+    let cornerRadius: CGFloat
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: cornerRadius, style: .continuous))
+    }
+}
+
 struct BudgetsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -31,71 +40,13 @@ struct BudgetsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: Overall Budget
-                Section("Overall Budget") {
-                    TextField("Amount", text: $overallAmountText)
-                        .keyboardType(.decimalPad)
-                        .disabled(syncWithIncome)
-                        .focused($focus, equals: .overall)
-                        .onChange(of: overallAmountText) { _, new in
-                            guard !syncWithIncome else { return }
-                            applyOverallBudgetChange(new)
-                        }
-                        .onAppear { seedOverallFieldsFromModel() }
-
-                    Toggle(isOn: $syncWithIncome) {
-                        Label("Sync with Income", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .onChange(of: syncWithIncome) { _, nowOn in
-                        setSyncWithIncome(nowOn)
-                    }
-                    .help("When on, the overall budget equals this month’s total income (sum of positive transactions).")
-                }
-
-                // MARK: Category Order
-                Section("Category Order") {
-                    Button { showReorder = true } label: {
-                        HStack {
-                            Image(systemName: "arrow.up.arrow.down")
-                            Text("Reorder Categories")
-                            Spacer()
-                            Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // MARK: Dark Mode toggle (applies immediately)
-                Section {
-                    Toggle(isOn: $useDarkMode) {
-                        Label("Dark Mode", systemImage: "moon.fill")
-                    }
-                } footer: {
-                    Text("Overrides your device appearance. When on, the entire app (including this settings screen) switches to Dark Mode immediately.")
-                }
-
-                // MARK: Per-Category (Optional)
-                Section("Per-Category (Optional)") {
-                    if sortedCategories.isEmpty {
-                        Text("No categories yet.").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(sortedCategories) { c in
-                            HStack {
-                                Label(c.name, systemImage: c.icon)
-                                Spacer()
-                                TextField("0", text: Binding(
-                                    get: { numberString(existingFor(c)?.amount ?? 0) },
-                                    set: { applyPerCategoryChange(for: c, newText: $0) }
-                                ))
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(maxWidth: 120)
-                                .focused($focus, equals: .category(c.persistentModelID))
-                            }
-                        }
-                    }
-                }
+                overallBudgetSection
+                categoryOrderSection
+                appearanceSection
+                perCategorySection
             }
             .navigationTitle("Settings")
+            .scrollContentBackground(.hidden)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -121,8 +72,85 @@ struct BudgetsSheet: View {
         .scrollDismissesKeyboard(.interactively)
         .contentShape(Rectangle())
         .onTapGesture { dismissFocus() }
+        .bbGlassRectBackground()
         // Theme applies immediately to this sheet
         .preferredColorScheme(useDarkMode ? .dark : .light)
+    }
+
+    @ViewBuilder private var overallBudgetSection: some View {
+        Section("Overall Budget") {
+            TextField("Amount", text: $overallAmountText)
+                .keyboardType(.decimalPad)
+                .disabled(syncWithIncome)
+                .focused($focus, equals: .overall)
+                .onChange(of: overallAmountText) { _, new in
+                    guard !syncWithIncome else { return }
+                    applyOverallBudgetChange(new)
+                }
+                .onAppear { seedOverallFieldsFromModel() }
+
+            Toggle(isOn: $syncWithIncome) {
+                Label("Sync with Income", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .onChange(of: syncWithIncome) { _, nowOn in
+                setSyncWithIncome(nowOn)
+            }
+            .help("When on, the overall budget equals this month’s total income (sum of positive transactions).")
+        }
+    }
+
+    @ViewBuilder private var categoryOrderSection: some View {
+        Section("Category Order") {
+            Button { showReorder = true } label: {
+                HStack {
+                    Image(systemName: "arrow.up.arrow.down")
+                    Text("Reorder Categories")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(GlassCard(cornerRadius: 14))
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder private var appearanceSection: some View {
+        Section {
+            Toggle(isOn: $useDarkMode) {
+                Label("Dark Mode", systemImage: "moon.fill")
+            }
+        } footer: {
+            Text("Overrides your device appearance. When on, the entire app (including this settings screen) switches to Dark Mode immediately.")
+        }
+    }
+
+    @ViewBuilder private var perCategorySection: some View {
+        Section("Per-Category (Optional)") {
+            if sortedCategories.isEmpty {
+                Text("No categories yet.").foregroundStyle(.secondary)
+            } else {
+                ForEach(sortedCategories) { c in
+                    perCategoryRow(for: c)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func perCategoryRow(for c: Category) -> some View {
+        HStack {
+            Label(c.name, systemImage: c.icon)
+            Spacer()
+            TextField("0", text: amountBinding(for: c))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 120)
+                .focused($focus, equals: .category(c.persistentModelID))
+        }
     }
 
     // MARK: - Derived
@@ -205,6 +233,14 @@ struct BudgetsSheet: View {
         try? context.save()
     }
 
+    // Small helper to keep the row lightweight for the type-checker
+    private func amountBinding(for c: Category) -> Binding<String> {
+        Binding<String>(
+            get: { numberString(existingFor(c)?.amount ?? 0) },
+            set: { applyPerCategoryChange(for: c, newText: $0) }
+        )
+    }
+
     // MARK: - Income calc
 
     private func totalIncome(for month: Date) -> Double {
@@ -254,15 +290,25 @@ private struct ReorderCategoriesSheet: View {
         NavigationStack {
             List {
                 ForEach(working) { c in
-                    HStack {
-                        Image(systemName: c.icon).frame(width: 24).foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        Image(systemName: c.icon)
+                            .frame(width: 24)
+                            .foregroundStyle(.secondary)
                         Text(c.name)
-                        Spacer()
-                        Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+                        Spacer(minLength: 8)
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(.tertiary)
                     }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(GlassCard(cornerRadius: 12))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
                 .onMove(perform: move)
             }
+            .scrollContentBackground(.hidden)
+            .bbGlassRectBackground()
             .navigationTitle("Reorder Categories")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -275,6 +321,8 @@ private struct ReorderCategoriesSheet: View {
                     EditButton()
                 }
             }
+            .toolbarBackground(.automatic, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         }
     }
 

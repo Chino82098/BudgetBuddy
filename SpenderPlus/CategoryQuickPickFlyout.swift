@@ -1,4 +1,6 @@
 import SwiftUI
+import SwiftData
+
 
 struct CategoryQuickPickFlyout: View {
     let categories: [Category]
@@ -9,34 +11,64 @@ struct CategoryQuickPickFlyout: View {
     private let chipInsetH: CGFloat = 12
     private let chipInsetV: CGFloat = 9
 
+    @ViewBuilder
     var body: some View {
-        // Simple vertical wrap-like stack
-        VStack(alignment: .trailing, spacing: chipSpacing) {
-            ForEach(categories) { c in
-                let brand = CategoryStyle.color(for: c.name, modelHex: c.colorHex)
-                Button {
-                    onPick(c)
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: CategoryStyle.icon(for: c.name))
-                            .foregroundStyle(.primary) // icon stays neutral
-                        Text(c.name)
-                            .foregroundStyle(.primary) // text stays neutral
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                    }
-                    .font(.subheadline)
-                    .padding(.horizontal, chipInsetH)
-                    .padding(.vertical, chipInsetV)
-                    .background(.ultraThinMaterial) // translucent fill
-                    .overlay(
-                        Capsule()
-                            .stroke(brand.opacity(0.95), lineWidth: 1.6) // vibrant border only
-                    )
-                    .clipShape(Capsule())
+        if categories.isEmpty {
+            Text("No categories")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .bbGlassRoundedCard(10)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        } else {
+            VStack(alignment: .trailing, spacing: chipSpacing) {
+                ForEach(categories, id: \.persistentModelID) { c in
+                    CategoryChip(category: c) { onPick($0) }
                 }
-                .buttonStyle(.plain)
             }
         }
     }
 }
+
+private struct CategoryChip: View {
+    let category: Category
+    let onTap: (Category) -> Void
+
+    // Keep spacing consistent with parent
+    private let chipInsetH: CGFloat = 12
+    private let chipInsetV: CGFloat = 9
+
+    var body: some View {
+        // Compute color/icon outside the main hierarchy to help the type-checker
+        let brand: Color = CategoryStyle.color(for: category.name, modelHex: category.colorHex)
+        let icon: String = CategoryStyle.icon(for: category.name)
+
+        Button { onTap(category) } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .foregroundStyle(.primary)
+                    .foregroundStyle(.primary, .secondary)
+                Text(category.name)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .font(.subheadline)
+            .padding(.horizontal, chipInsetH)
+            .padding(.vertical, chipInsetV)
+            .frame(minHeight: 44)
+            .background(bbGlassCapsuleBackground())
+            .overlay(
+                Capsule().stroke(brand.opacity(0.95), lineWidth: 1.6)
+            )
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(category.name)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+

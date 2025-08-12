@@ -326,6 +326,8 @@ private struct TransactionListSection: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.white)
         .listStyle(.insetGrouped)
     }
 

@@ -8,58 +8,97 @@ struct SummaryHeader: View {
     @Binding var month: Date
 
     var body: some View {
-        let monthStart = month.startOfMonth()
         let cal = Calendar.current
-        let nextStart = cal.date(byAdding: .month, value: 1, to: monthStart)!
+        let monthStart = month.startOfMonth()
+        let nextStart = cal.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
 
-        // This month’s spend
+        // This month’s transactions
         let monthTxns = txns.filter { $0.date >= monthStart && $0.date < nextStart }
-        let spent = monthTxns.filter { $0.amount < 0 }.map { -$0.amount }.reduce(0, +)
+        let spent = monthTxns
+            .filter { $0.amount < 0 }
+            .map { -$0.amount }
+            .reduce(0, +)
 
         // Budget + progress
         let budget = budgets.first(where: { $0.monthStart == monthStart && $0.category == nil })?.amount ?? 0
         let remaining = max(0, budget - spent)
-        let progress = budget > 0 ? min(1, spent / budget) : 0
+        let progress = budget > 0 ? min(max(spent / budget, 0), 1) : 0
 
-        return VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             // Month navigation row
             HStack {
                 Button {
-                    month = cal.date(byAdding: .month, value: -1, to: month)!.startOfMonth()
-                } label: { Image(systemName: "chevron.left") }
+                    if let prev = cal.date(byAdding: .month, value: -1, to: month) {
+                        month = prev.startOfMonth()
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .accessibilityLabel("Previous month")
 
                 Spacer()
 
                 Text(monthStart, format: .dateTime.year().month())
-                    .font(.title2).bold()
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
                 Button {
-                    month = cal.date(byAdding: .month, value: 1, to: month)!.startOfMonth()
-                } label: { Image(systemName: "chevron.right") }
+                    if let next = cal.date(byAdding: .month, value: 1, to: month) {
+                        month = next.startOfMonth()
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .accessibilityLabel("Next month")
             }
             .buttonStyle(.borderless)
 
-            // Budget card (no Income/Net section)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Budget: \(budget.currency)")
-                ProgressView(value: progress)
+            // Budget card
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    VStack(alignment: .leading) {
-                        Text("Spent").font(.caption).foregroundStyle(.secondary)
-                        Text(spent.currency).bold()
+                    Text("Budget")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(budget.currency)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                ProgressView(value: progress)
+                    .tint(.blue)
+                    .accessibilityLabel("Budget progress")
+                    .accessibilityValue(Text("\(Int((progress * 100).rounded())) percent"))
+
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Spent")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(spent.currency)
+                            .font(.headline.weight(.semibold))
                     }
                     Spacer()
-                    VStack(alignment: .trailing) {
-                        Text("Remaining").font(.caption).foregroundStyle(.secondary)
-                        Text(remaining.currency).bold()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Remaining")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(remaining.currency)
+                            .font(.headline.weight(.semibold))
                     }
                 }
             }
-            .padding()
-            .background(.thinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(14)
+            .background(
+                Color.clear
+                    .glassEffect(
+                        .clear.interactive(),
+                        in: .rect(cornerRadius: 16, style: .continuous)
+                    )
+            )
         }
         .padding(.horizontal)
     }

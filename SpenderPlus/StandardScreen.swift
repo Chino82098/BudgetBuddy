@@ -1,33 +1,37 @@
-// StandardScreen.swift
 import SwiftUI
 
-struct StandardScreen<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .applyKeyboardUX()   // <- tap/scroll to dismiss, no Done button
-    }
-}
-
-
-
+// MARK: - BudgetBuddy glass shims (unify iOS 26 vs older)
 extension View {
-    func standardSheet<Content: View>(
-        isPresented: Binding<Bool>,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        sheet(isPresented: isPresented) {
-            StandardScreen { content() }
-        }
+
+    /// Rounded-rectangle glass container (cards, pills, list rows).
+    @ViewBuilder
+    func bbGlassContainer(cornerRadius: CGFloat = 12) -> some View {
+        self
+            .background(
+                Color.clear
+                    .glassEffect(
+                        .clear.interactive(),
+                        in: .rect(cornerRadius: cornerRadius, style: .continuous)
+                    )
+            )
+            // Subtle highlight edge to sell the glass look
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 0.75)
+            )
     }
 
-    func standardSheet<Item: Identifiable, Content: View>(
-        item: Binding<Item?>,
-        @ViewBuilder content: @escaping (Item) -> Content
-    ) -> some View {
-        sheet(item: item) { it in
-            StandardScreen { content(it) }
-        }
+    /// Circular glass (good for the floating + button).
+    @ViewBuilder
+    func bbGlassCircle(padding: CGFloat = 20) -> some View {
+        self
+            .padding(padding)
+            .background {
+                Circle().glassEffect(.clear.interactive(), in: .circle)
+            }
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.18), lineWidth: 0.75)
+            )
     }
 }

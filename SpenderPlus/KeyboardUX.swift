@@ -1,6 +1,7 @@
 import SwiftUI
 
 #if canImport(UIKit)
+@MainActor
 private extension UIApplication {
     func endEditing() {
         sendAction(#selector(UIResponder.resignFirstResponder),
@@ -21,7 +22,7 @@ struct KeyboardUX: ViewModifier {
             .simultaneousGesture(TapGesture().onEnded {
                 onBackgroundTap()
                 #if canImport(UIKit)
-                UIApplication.shared.endEditing()
+                DispatchQueue.main.async { UIApplication.shared.endEditing() }
                 #endif
             })
     }
@@ -41,7 +42,7 @@ extension View {
         modifier(KeyboardUX(
             onBackgroundTap: {
                 #if canImport(UIKit)
-                UIApplication.shared.endEditing()
+                DispatchQueue.main.async { UIApplication.shared.endEditing() }
                 #endif
             }
         ))
