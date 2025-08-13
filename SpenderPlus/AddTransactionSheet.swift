@@ -54,46 +54,75 @@ struct AddTransactionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
+                Section {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Date")
+                            .foregroundColor(.primary)
+                            .font(.system(size: 18, weight: .bold))
+                            .frame(width: 90, alignment: .leading)
+                        DatePicker("", selection: $date, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .padding(.vertical, -2)
+                    }
+                }
 
-                Section("Category") {
-                    Picker("Category", selection: $categoryName) {
-                        ForEach(sortedCategories) { c in
-                            Text(c.name).tag(c.name)
+                Section {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Category")
+                            .foregroundColor(.primary)
+                            .font(.system(size: 18, weight: .bold))
+                            .frame(width: 90, alignment: .leading)
+                        Picker("", selection: $categoryName) {
+                            ForEach(sortedCategories) { c in
+                                Text(c.name).tag(c.name)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: categoryName) { _, newName in
+                            applySignRule(for: newName)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .onChange(of: categoryName) { _, newName in
-                        applySignRule(for: newName)
+                }
+
+                Section {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Amount")
+                            .foregroundColor(.primary)
+                            .font(.system(size: 18, weight: .bold))
+                            .frame(width: 90, alignment: .leading)
+                        TextField("", text: $amountText, prompt: Text("e.g. -54.23 for expense, 200 for income"))
+                            .textFieldStyle(.plain)
+                            .keyboardType(.decimalPad)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
+                            .submitLabel(.next)
+                            .focused($focusedField, equals: .amount)
+                            .onSubmit { focusedField = .note }
+                            .multilineTextAlignment(.trailing)
                     }
                 }
 
-                Section("Amount") {
-                    TextField("e.g. -54.23 for expense, 200 for income", text: $amountText)
-                        .textFieldStyle(.plain)
-                        .keyboardType(.decimalPad)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .submitLabel(.next)
-                        .focused($focusedField, equals: .amount)
-                        .onSubmit { focusedField = .note }
-                        .modifier(GlassFieldBackground())
-                }
-
-                Section("Note") {
-                    TextField("Optional note", text: $note)
-                        .textFieldStyle(.plain)
-                        .textInputAutocapitalization(.sentences)
-                        .autocorrectionDisabled(false)
-                        .focused($focusedField, equals: .note)
-                        .submitLabel(.done)
-                        .onSubmit { dismissFocus() }
-                        .modifier(GlassFieldBackground())
+                Section {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Note")
+                            .foregroundColor(.primary)
+                            .font(.system(size: 18, weight: .bold))
+                            .frame(width: 90, alignment: .leading)
+                        TextField("", text: $note)
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.sentences)
+                            .autocorrectionDisabled(false)
+                            .focused($focusedField, equals: .note)
+                            .submitLabel(.done)
+                            .onSubmit { dismissFocus() }
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
 
                 // Recurring
-                Section("Recurring") {
+                Section {
                     Toggle("Make this a recurring charge", isOn: $isRecurring)
+                        .font(.system(size: 18, weight: .bold))
 
                     if isRecurring {
                         Picker("Repeat", selection: $preset) {
@@ -139,16 +168,29 @@ struct AddTransactionSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("New Transaction")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }
+                ToolbarItem(placement: .principal) {
+                    Text("New Transaction")
+                        .font(.system(size: 20, weight: .bold))
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        // Subtler shadow for Cancel button
+                        .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: save)
+                        // Subtler shadow for Save button
+                        .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
+                }
             }
-            .toolbarBackground(.clear, for: .navigationBar)
+            .toolbarBackground(Color(.systemGray6), for: .navigationBar)
             .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             .animation(.easeInOut(duration: 0.2), value: isRecurring)
             .scrollContentBackground(.hidden)
-            .bbGlassRectBackground()
+            .background(Color(.systemGray6))
         }
         .onAppear {
             // Ensure we have a valid, selectable category
@@ -327,8 +369,8 @@ struct AddTransactionSheet: View {
 private struct GlassFieldBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
             .background(
                 Color.clear
                     .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 14, style: .continuous))

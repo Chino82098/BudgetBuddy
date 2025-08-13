@@ -19,7 +19,25 @@ struct CategoryQuickPickFlyout: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .bbGlassRoundedCard(10)
+                .background(
+                    Group {
+                        if #available(iOS 18.0, *) {
+                            Color.clear
+                                .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 10, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(Color.white.opacity(0.22), lineWidth: 0.8)
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                                )
+                        }
+                    }
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         } else {
             VStack(alignment: .trailing, spacing: chipSpacing) {
@@ -48,7 +66,6 @@ private struct CategoryChip: View {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .foregroundStyle(.primary)
-                    .foregroundStyle(.primary, .secondary)
                 Text(category.name)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -58,7 +75,25 @@ private struct CategoryChip: View {
             .padding(.horizontal, chipInsetH)
             .padding(.vertical, chipInsetV)
             .frame(minHeight: 44)
-            .background(bbGlassCapsuleBackground())
+            .background(
+                Group {
+                    if #available(iOS 18.0, *) {
+                        Color.clear
+                            .glassEffect(.clear.interactive(), in: .rect(cornerRadius: 22, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(Color.white.opacity(0.20), lineWidth: 0.7)
+                            )
+                    } else {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(Color.white.opacity(0.18), lineWidth: 0.7)
+                            )
+                    }
+                }
+            )
             .overlay(
                 Capsule().stroke(brand.opacity(0.95), lineWidth: 1.6)
             )
